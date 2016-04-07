@@ -60,7 +60,7 @@ function config_ttrss {
 }
 
 function write_sql_init {
-	if [[ ! -f "$SQL_INIT_FILE" ]]; then
+	if [[ ! -f "$SQL_INIT_FILE" && ! -f "$SQL_INIT_FILE.done" ]]; then
 		cat > "$SQL_INIT_FILE" <<-EOF
 		--create user
 		CREATE USER $DB_USER WITH LOGIN PASSWORD '$DB_PASS';
@@ -81,14 +81,21 @@ function write_nginx_proxyconf {
 	setProxyConf "tt-rss" "$NGINX_CFG_FILE" "$LOCAL_PROTOCOL://$LOCAL_DOMAIN:$LOCAL_PORT/$LOCAL_URI" "$SELF_URL_PATH"
 }
 
-function prepare_and_start {
-	install_ttrss "$TTRSS_TAG" && config_ttrss
-	[[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]] && write_sql_init
-	[[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]] && write_nginx_proxyconf
-	apache2-foreground
+function main {
+	case $1 in
+		tt-rss )
+			install_ttrss "$TTRSS_TAG" && config_ttrss
+			[[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]] && write_sql_init
+			[[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]] && write_nginx_proxyconf
+			apache2-foreground
+			;;
+		*)
+			exit 0
+			;;
+	esac
 }
 
-prepare_and_start
+main "$@"
 # ENV ENABLE_REGISTRATION false
 # ENV REG_NOTIFY_ADDRESS changeme
 # ENV REG_MAX_USERS 10

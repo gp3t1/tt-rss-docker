@@ -46,5 +46,6 @@ RUN docker-php-ext-install -j$(nproc) mbstring \
 COPY bin/* /usr/local/bin/
 RUN chmod +x /usr/local/bin/*
 
-CMD ["docker-entrypoint"]
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["tt-rss"]
 # COPY config/php.ini /usr/local/etc/php/

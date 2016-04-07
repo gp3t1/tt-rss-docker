@@ -1,0 +1,121 @@
+#!/bin/bash
+cd /var/www/html
+
+HOST=$(hostname)
+APP_NAME="tt-rss"
+
+# TT-RSS Config
+TTRSS_REPO="https://tt-rss.org/git/tt-rss.git"
+TTRSS_DIR="$APP_NAME"
+DEFAULT_CONF="$TTRSS_DIR/config.php-dist"
+CONF="$TTRSS_DIR/config.php"
+
+# Nginx Config
+NGINX_CFG_DIR="/external/nginx_conf"
+NGINX_CFG_FILE="${NGINX_CFG_DIR}/${HOST}.conf"
+
+# SQL DB Config
+SQL_INIT_DIR="/external/initdb"
+SQL_INIT_FILE="$SQL_INIT_DIR/tt-rss.sql"
+
+# URLs config
+LOCAL_PROTOCOL="http"
+LOCAL_DOMAIN="$HOST"
+LOCAL_PORT="80"
+LOCAL_URI="$APP_NAME"
+if [[ "$SELF_URL_PATH" =~ ^(http|https)://([^:\/]*)(:([0-9]+))?(/(.*))?$ ]]; then
+	EXT_PROTOCOL="${BASH_REMATCH[1]}" 
+	EXT_DOMAIN="${BASH_REMATCH[2]}"
+	EXT_PORT="${BASH_REMATCH[4]}"
+	EXT_URI="${BASH_REMATCH[6]}"
+else
+	echo "Provided SELF_URL_PATH is not valid.( http[s]://my.domain.xyz[:custom_port][/custom_uri] )"
+	exit 1
+fi
+
+function install_ttrss {
+	#usage : install_ttrss <branch_name|tag_name[default:master]>
+	[[ $# -lt 1 ]] && TAG="master" || TAG="$1"
+	echo "[INSTALL] TT-RSS.$TAG will be installed in $(pwd)/$TTRSS_DIR"
+	if [[ ! -d "$TTRSS_DIR" ]]; then
+		git clone -b "$TAG" "$TTRSS_REPO" "$TTRSS_DIR" \
+		&& chown -R www-data:www-data "$TTRSS_DIR"
+	fi
+	[[ -f "$DEFAULT_CONF" ]]
+}
+
+function config_ttrss {
+	[[ -f "$CONF" ]] && echo "[CONFIG]  tt-rss is already configured." && return 0
+
+	echo "[CONFIG]  TT-RSS configuration will be defined in $CONF (from $DEFAULT_CONF)"
+	sed -r 's|^(\s*define\('\''DB_TYPE'\'',).*$|\1 "$DB_TYPE");|;
+					s|^(\s*define\('\''DB_NAME'\'',).*$|\1 "$DB_NAME");|;
+					s|^(\s*define\('\''DB_HOST'\'',).*$|\1 "$DB_HOST");|;
+					s|^(\s*define\('\''DB_PORT'\'',).*$|\1 "$DB_PORT");|;
+					s|^(\s*define\('\''DB_USER'\'',).*$|\1 "$DB_USER");|;
+					s|^(\s*define\('\''DB_PASS'\'',).*$|\1 "$DB_PASS");|;
+					s|^(\s*define\('\''PHP_EXECUTABLE'\'',).*$|\1 "$(which php)");|;
+					s|^(\s*define\('\''SELF_URL_PATH'\'',).*$|\1 "$SELF_URL_PATH");|;' "$DEFAULT_CONF" > "$CONF"
+	[[ -f "$CONF" ]]
+}
+
+function write_sql_init {
+	if [[ ! -f "$SQL_INIT_FILE" ]]; then
+		cat > "$SQL_INIT_FILE" <<-EOF
+		--create user
+		CREATE USER $DB_USER WITH LOGIN PASSWORD '$DB_PASS';
+		--or update its password
+		ALTER USER $DB_USER WITH PASSWORD '$DB_PASS';
+		--change password validity period
+		ALTER USER $DB_USER VALID UNTIL 'infinity';
+		--create database
+		CREATE DATABASE $DB_NAME OWNER $DB_USER; 
+		--ENCODING 'UTF8' LC_COLLATE='fr_FR.UTF8' LC_CTYPE='fr_FR.UTF8' TEMPLATE template0;
+		GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
+		
+		EOF
+	fi
+}
+
+function write_nginx_proxyconf {
+	setProxyConf "tt-rss" "$NGINX_CFG_FILE" "$LOCAL_PROTOCOL://$LOCAL_DOMAIN:$LOCAL_PORT/$LOCAL_URI" "$SELF_URL_PATH"
+}
+
+function prepare_and_start {
+	install_ttrss "$TTRSS_TAG" && config_ttrss
+	[[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]] && write_sql_init
+	[[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]] && write_nginx_proxyconf
+	apache2-foreground
+}
+
+prepare_and_start
+# ENV ENABLE_REGISTRATION false
+# ENV REG_NOTIFY_ADDRESS changeme
+# ENV REG_MAX_USERS 10
+# ENV MYSQL_CHARSET 'UTF8'
+# ENV FEED_CRYPT_KEY ''
+# ENV SINGLE_USER_MODE false
+# ENV SIMPLE_UPDATE_MODE false
+# ENV LOCK_DIRECTORY 'lock'
+# ENV CACHE_DIR 'cache'
+# ENV ICONS_DIR "feed-icons"
+# ENV ICONS_URL "feed-icons"
+# ENV AUTH_AUTO_CREATE true
+# ENV AUTH_AUTO_LOGIN true
+# ENV FORCE_ARTICLE_PURGE 0
+# ENV PUBSUBHUBBUB_HUB ''
+# ENV PUBSUBHUBBUB_ENABLED false
+# ENV SPHINX_SERVER 'localhost:9312'
+# ENV SPHINX_INDEX 'ttrss, delta'
+# ENV SESSION_COOKIE_LIFETIME 86400
+# ENV SMTP_FROM_NAME 'Tiny Tiny RSS'
+# ENV SMTP_FROM_ADDRESS 'noreply@your.domain.dom'
+# ENV DIGEST_SUBJECT '[tt-rss] New headlines for last 24 hours'
+# ENV SMTP_SERVER ''
+# ENV SMTP_LOGIN ''
+# ENV SMTP_PASSWORD ''
+# ENV SMTP_SECURE ''
+# ENV CHECK_FOR_UPDATES true
+# ENV ENABLE_GZIP_OUTPUT false
+# ENV PLUGINS 'auth_internal, note'
+# ENV LOG_DESTINATION 'sql'

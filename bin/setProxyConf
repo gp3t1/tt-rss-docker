@@ -1,0 +1,124 @@
+#!/bin/bash
+if [[ $# -ne 4 ]]; then
+	echo "usage: $0 <app_name> <file_name> <local_url> <ext_url>"
+	exit 1
+fi
+
+APP_NAME=$1
+FILE=$2
+TMPFILE="$FILE.tmp"
+[[ -f "$TMPFILE" ]] && rm "$TMPFILE"
+
+LOCAL_URL=$3
+if [[ "$LOCAL_URL" =~ ^(http)://([^:\/]*)(:([0-9]+))?/(.*)+$ ]]; then
+	LOCAL_DOMAIN="${BASH_REMATCH[2]}"
+	LOCAL_PORT="${BASH_REMATCH[4]:-80}"
+	LOCAL_URI="${BASH_REMATCH[6]}"
+else
+	echo "local_url is not valid.( http://my.domain.xyz[:custom_port][/custom_uri] )"
+	exit 1
+fi
+
+EXT_URL=$4
+if [[ "$EXT_URL" =~ ^(https)://([^:\/]*)(:([0-9]+))?(/(.*))?$ ]]; then
+	EXT_DOMAIN="${BASH_REMATCH[2]}"
+	EXT_PORT="${BASH_REMATCH[4]:-443}"
+	EXT_URI="${BASH_REMATCH[6]}"
+else
+	echo "ext_url is not valid.( https://my.domain.xyz[:custom_port][/custom_uri] )"
+	exit 1
+fi
+
+function write_upstream {
+	cat >> "$TMP_FILE" <<-EOF
+	upstream ${APP_NAME} {
+    server $LOCAL_DOMAIN:$LOCAL_PORT;
+	}
+
+	EOF
+}
+
+function write_server_head {
+	cat >> "$TMP_FILE" <<-EOF
+	server {
+		# http://nginx.org/en/docs/http/configuring_https_servers.html
+    
+    listen ${EXT_PORT} ssl http2;
+    server_name ${EXT_DOMAIN};
+
+    # Logs
+    access_log /var/log/nginx/https-${EXT_DOMAIN}-${APP_NAME}-access.log combined buffer=16k;
+    error_log  /var/log/nginx/https-${EXT_DOMAIN}-${APP_NAME}-error.log  warn;
+
+    # SSL Files
+    ssl_certificate     /etc/letsencrypt/live/${EXT_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${EXT_DOMAIN}/privkey.pem;
+    # Generate with: openssl dhparam -out /etc/nginx/conf.d/dhparam.pem 2048
+    ssl_dhparam /etc/nginx/conf.d/dhparam.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/${EXT_DOMAIN}/chain.pem;
+
+    ssl_session_timeout 10m;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+    keepalive_timeout   70;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128
+-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3
+-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';
+
+    # HSTS (ngx_http_headers_module is required) see https://hstspreload.appspot.com
+    #add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload';
+    ## If you won't/can't turn on HTTPS for *all* subdomains, use this simpler version:
+    add_header Strict-Transport-Security 'max-age=31536000';
+
+    # OCSP Stapling ---
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    # Locations
+    location ~ /\.ht {
+      deny all;
+    }
+
+	EOF
+}
+
+function write_server_tail {
+  if [[ -z "$EXT_URI" ]]; then
+  	cat >> "$TMP_FILE" <<-EOF
+  	  location ~ ^(.*)$ {
+  	    rewrite (.*) /$LOCAL_URI/\$1  break;
+		EOF
+	else
+		if [[ $"EXT_URI" = "$LOCAL_URI" ]]; then
+			cat >> "$TMP_FILE" <<-EOF
+			  location ~ ^$EXT_URI(/(.*))?$ {
+			EOF
+		else
+			cat >> "$TMP_FILE" <<-EOF
+			  location ~ ^$EXT_URI(/(.*))?$ {
+			    rewrite $EXT_URI(.*) /$LOCAL_URI\$1  break;
+			EOF
+		fi
+  fi
+  cat >> "$TMP_FILE" <<-EOF
+	    proxy_pass http://${APP_NAME};
+	    add_header Front-End-Https on;
+	    add_header X-Frame-Options SAMEORIGIN;
+	  }
+	}
+	EOF
+	mv "$TMP_FILE" "$FILE"
+}
+
+function generate_proxy_conf {
+	if [[ -f "$FILE" ]]; then
+		echo "file $FILE already exists!"
+		exit 1
+	else
+		write_upstream && write_server_head && write_server_tail || exit 1
+	fi
+}
+
+generate_proxy_conf

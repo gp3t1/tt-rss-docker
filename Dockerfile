@@ -4,7 +4,7 @@ MAINTAINER Jeremy PETIT "jeremy.petit@gmail.com"
 
 # docker run --rm -e SELF_URL_PATH=http://localhost/rss -e DB_TYPE=pgsql -e DB_NAME=toto -e DB_HOST=dbhost -e DB_PORT=5432 -e DB_USER=tt-rss -e DB_PASS=tt-rss 
 ENV DEBIAN_FRONTEND noninteractive
-ENV TTRSS_TAG master
+ENV TTRSS_TAG 16.3
 ENV SELF_URL_PATH 'http://example.org/tt-rss/'
 # supports pgsql or mysql
 ENV DB_TYPE pgsql
@@ -18,7 +18,8 @@ ENV DB_PORT changeme
 ENV DB_USER tt-rss
 # database tt-rss password
 ENV DB_PASS changeme
-ENV TT-RSS_OPTS ""
+# 
+ENV TTRSS_OPTS ""
 
 VOLUME ["/var/log", "/backups", "/var/www/html", "/external/nginx_conf", "/external/initdb"]
 #WORKDIR /var/www/html

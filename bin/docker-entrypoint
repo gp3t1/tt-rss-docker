@@ -44,6 +44,32 @@ function install_ttrss {
 	[[ -f "$DEFAULT_CONF" ]]
 }
 
+function set_var{
+	[[ ! -f "$CONF" ]] && echo "[CONFIG]  tt-rss config file not found ($CONF)." && return 1
+	[[ $# -ne 2 ]] && echo "usage: $0 <\"variable_name\"> <\"value\">" && return 2
+	echo "[CONFIG]  define $1=$2"
+	sed -ri.bak 's|^(\s*define\('\''$1'\'',).*$|\1 "$2");|;' "$CONF"
+}
+
+function set_other_vars {
+	# $1 must be in the form : var_name="value ezvsnv"; [var_name="value ezvsnv";] ...
+	[[ $# -ne 1 ]] && return 1
+	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
+	
+	local other_vars=$(echo "$1" | sed "s|\";\s*|\"\n|g")
+	echo "[CONFIG]  list of custom properties provided for tt-rss : "
+	echo "$other_vars"
+	
+	OIFS="$IFS"
+	IFS=$'\n'
+	for v in $other_vars; do
+		if [[ "$v" =~ ^([0-9a-zA-Z_]+)=\"(.*)\"$ ]]; then
+			set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
+		fi
+	done
+	IFS="$OIFS"
+}
+
 function config_ttrss {
 	[[ -f "$CONF" ]] && echo "[CONFIG]  tt-rss is already configured." && return 0
 
@@ -56,6 +82,7 @@ function config_ttrss {
 					s|^(\s*define\('\''DB_PASS'\'',).*$|\1 "$DB_PASS");|;
 					s|^(\s*define\('\''PHP_EXECUTABLE'\'',).*$|\1 "$(which php)");|;
 					s|^(\s*define\('\''SELF_URL_PATH'\'',).*$|\1 "$SELF_URL_PATH");|;' "$DEFAULT_CONF" > "$CONF"
+	set_other_vars "$TTRSS_OPTS" || return 1
 	[[ -f "$CONF" ]]
 }
 
@@ -84,9 +111,13 @@ function write_nginx_proxyconf {
 function main {
 	case $1 in
 		tt-rss )
-			install_ttrss "$TTRSS_TAG" && config_ttrss
-			[[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]] && write_sql_init
-			[[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]] && write_nginx_proxyconf
+			install_ttrss "$TTRSS_TAG" && config_ttrss || exit 1
+			if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
+				write_sql_init || exit 2
+			fi
+			if [[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]]; then
+				write_nginx_proxyconf || exit 3
+			fi
 			apache2-foreground
 			;;
 		*)

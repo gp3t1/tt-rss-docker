@@ -20,6 +20,8 @@ ENV DB_USER tt-rss
 ENV DB_PASS changeme
 # 
 ENV TTRSS_OPTS ""
+# TTRSS_OPTS must be in the form : "var_name=value ezvsnv; [var_name=value ezvsnv; ]..."
+# no space around '=' and one '; ' between each property definition (';'+' ')
 
 VOLUME ["/var/log", "/backups", "/var/www/html", "/external/nginx_conf", "/external/initdb"]
 #WORKDIR /var/www/html

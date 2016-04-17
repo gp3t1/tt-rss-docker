@@ -28,12 +28,18 @@ if [[ "$SELF_URL_PATH" =~ ^(http|https)://([^:\/]*)(:([0-9]+))?(/(.*))?$ ]]; the
 	EXT_DOMAIN="${BASH_REMATCH[2]}"
 	EXT_PORT="${BASH_REMATCH[4]}"
 	EXT_URI="${BASH_REMATCH[6]}"
+	printf "\nSELF_URL %s is valid : \n" "$SELF_URL_PATH"
+	printf "  Protocol : %s " "$EXT_PROTOCOL" 
+	[[ "$EXT_PROTOCOL" = "http" ]] && printf "\n" || printf "(you need an external http server with ssl support) \n"
+	printf "  Domain   : %s \n" "$EXT_DOMAIN"
+	printf "  Port     : %s \n" "$EXT_PORT"
+	printf "  Uri      : %s \n" "$EXT_URI"
 else
 	echo "Provided SELF_URL_PATH is not valid.( http[s]://my.domain.xyz[:custom_port][/custom_uri] )"
 	exit 1
 fi
 
-function install_ttrss {
+install_ttrss() {
 	#usage : install_ttrss <branch_name|tag_name[default:master]>
 	[[ $# -lt 1 ]] && TAG="master" || TAG="$1"
 	echo "[INSTALL] TT-RSS.$TAG will be installed in $(pwd)/$TTRSS_DIR"
@@ -44,33 +50,52 @@ function install_ttrss {
 	[[ -f "$DEFAULT_CONF" ]]
 }
 
-function set_var{
+set_var() {
 	[[ ! -f "$CONF" ]] && echo "[CONFIG]  tt-rss config file not found ($CONF)." && return 1
 	[[ $# -ne 2 ]] && echo "usage: $0 <\"variable_name\"> <\"value\">" && return 2
 	echo "[CONFIG]  define $1=$2"
 	sed -ri.bak 's|^(\s*define\('\''$1'\'',).*$|\1 "$2");|;' "$CONF"
 }
 
-function set_other_vars {
-	# $1 must be in the form : var_name="value ezvsnv"; [var_name="value ezvsnv";] ...
+set_other_vars() {
+	# $1 must be in the form : var_name=value ezvsnv; [var_name=value ezvsnv; ]...
+	# no space around '=' and one space after ';'
 	[[ $# -ne 1 ]] && return 1
 	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
 	
-	local other_vars=$(echo "$1" | sed "s|\";\s*|\"\n|g")
-	echo "[CONFIG]  list of custom properties provided for tt-rss : "
-	echo "$other_vars"
-	
-	OIFS="$IFS"
-	IFS=$'\n'
-	for v in $other_vars; do
-		if [[ "$v" =~ ^([0-9a-zA-Z_]+)=\"(.*)\"$ ]]; then
-			set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
+	other_vars=$(echo $1 | sed 's|;$||' | awk '{ n=split($0, a, "; "); for (i = 1; i <= n; ++i ) print a[i] }' )
+	while read var; do
+		if [[ "$var" =~ ([0-9a-zA-Z_-]+)=(.*) ]]; then
+			printf "  %s : %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+			#set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
+		else
+			printf "  %s is not a valid property definition!\n" 		"$var"
+			printf "  Check docker environment variables! (%s)\n" "$other_vars"
+			return 1
 		fi
-	done
-	IFS="$OIFS"
+	done <<<"$other_vars"
 }
 
-function config_ttrss {
+# set_other_vars() {
+# 	# $1 must be in the form : var_name="value ezvsnv"; [var_name="value ezvsnv";] ...
+# 	[[ $# -ne 1 ]] && return 1
+# 	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
+	
+# 	local other_vars=$(echo "$1" | sed "s|\";\s*|\"\n|g")
+# 	echo "[CONFIG]  list of custom properties provided for tt-rss : "
+# 	echo "$other_vars"
+	
+# 	OIFS="$IFS"
+# 	IFS=$'\n'
+# 	for v in $other_vars; do
+# 		if [[ "$v" =~ ^([0-9a-zA-Z_]+)=\"(.*)\"$ ]]; then
+# 			set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
+# 		fi
+# 	done
+# 	IFS="$OIFS"
+# }
+
+config_ttrss() {
 	[[ -f "$CONF" ]] && echo "[CONFIG]  tt-rss is already configured." && return 0
 
 	echo "[CONFIG]  TT-RSS configuration will be defined in $CONF (from $DEFAULT_CONF)"
@@ -86,7 +111,7 @@ function config_ttrss {
 	[[ -f "$CONF" ]]
 }
 
-function write_sql_init {
+write_sql_init() {
 	if [[ ! -f "$SQL_INIT_FILE" && ! -f "$SQL_INIT_FILE.done" ]]; then
 		cat > "$SQL_INIT_FILE" <<-EOF
 		--create user
@@ -104,11 +129,49 @@ function write_sql_init {
 	fi
 }
 
-function write_nginx_proxyconf {
+write_nginx_proxyconf() {
 	setProxyConf "tt-rss" "$NGINX_CFG_FILE" "$LOCAL_PROTOCOL://$LOCAL_DOMAIN:$LOCAL_PORT/$LOCAL_URI" "$SELF_URL_PATH"
 }
 
-function main {
+test_tcp_postgres() {
+	timeout 1 bash -c "cat < /dev/null > /dev/tcp/$DB_HOST/$DB_PORT" &>/dev/null
+	echo "$?"
+}
+
+postgres_status() {
+	[[ $1 =~ ^[0-9]{1,1}$ ]] && STEP=$1 || STEP=2
+	printf "\nTCP TEST for Postgres Host (3x step=%i) :" "$STEP"
+	local res1=$(test_tcp_postgres) && printf "%i_" "$res1" && sleep $STEP
+	local res2=$(test_tcp_postgres)	&& printf "%i_" "$res2" && sleep $STEP
+	local res3=$(test_tcp_postgres)	&& printf "%i "	"$res3"
+	
+	if [[ $res1 -eq 0 && $res2 -eq 0 && $res3 -eq 0 ]] ; then
+		printf "Postgres UP!\n" && return 0
+	else
+		if [[ $res1 -eq 1 && $res2 -eq 1 && $res3 -eq 1 ]]; then
+			printf "Postgres DOWN!\n" && return 1
+		else
+			printf "Postgres is starting/stopping!\n" && return 2
+		fi
+	fi
+}
+
+wait_postgres() {
+	[[ $1 =~ ^[0-9]{1,3}$ ]] && DB_TIMEOUT=$1 || DB_TIMEOUT=30
+	local start=$(date +%s)
+	printf "\nWaiting for Postgres instance(timeout=%i)..." "$DB_TIMEOUT"
+	while ! postgres_status 2 ; do
+		sleep 1
+		local tstamp=$(date +%s)
+		if [[ $(( tstamp - start )) -gt $DB_TIMEOUT ]]; then
+			printf "Can't connect to postgres instance(>%ss)\n" "$DB_TIMEOUT"
+			exit 1
+		fi
+	done
+	return 0
+}
+
+main() {
 	case $1 in
 		tt-rss )
 			install_ttrss "$TTRSS_TAG" && config_ttrss || exit 1
@@ -118,9 +181,17 @@ function main {
 			if [[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]]; then
 				write_nginx_proxyconf || exit 3
 			fi
-			apache2-foreground
+			wait_postgres 60 && apache2-foreground
+			;;
+		initsql )
+			if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
+				write_sql_init || exit 2
+			fi
 			;;
 		*)
+			printf "\nUse one of the following commands : \n \
+			 				\"initsql\" -> write sql scripts for postgres initialization and stop \n \
+			 				\"tt-rss\"  -> run tt-rss"
 			exit 0
 			;;
 	esac

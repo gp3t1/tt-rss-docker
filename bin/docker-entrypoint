@@ -116,15 +116,15 @@ write_sql_init() {
 	if [[ ! -f "$SQL_INIT_FILE" ]]; then
 		cat > "$SQL_INIT_FILE" <<-EOF
 		--create user
-		CREATE USER $DB_USER WITH LOGIN PASSWORD '$DB_PASS';
+		CREATE USER '$DB_USER' WITH LOGIN PASSWORD '$DB_PASS';
 		--or update its password
-		ALTER USER $DB_USER WITH PASSWORD '$DB_PASS';
+		ALTER USER '$DB_USER' WITH PASSWORD '$DB_PASS';
 		--change password validity period
-		ALTER USER $DB_USER VALID UNTIL 'infinity';
+		ALTER USER '$DB_USER' VALID UNTIL 'infinity';
 		--create database
-		CREATE DATABASE $DB_NAME OWNER $DB_USER; 
+		CREATE DATABASE '$DB_NAME' OWNER '$DB_USER'; 
 		--ENCODING 'UTF8' LC_COLLATE='fr_FR.UTF8' LC_CTYPE='fr_FR.UTF8' TEMPLATE template0;
-		GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
+		GRANT ALL PRIVILEGES ON DATABASE '$DB_NAME' TO '$DB_USER';
 		
 		EOF
 		if [[ ! -f "$SQL_INIT_FILE" ]] ; then

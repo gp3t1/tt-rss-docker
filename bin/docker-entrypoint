@@ -48,11 +48,11 @@ set_other_vars() {
 	[[ $# -ne 1 ]] && return 1
 	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
 	
-	other_vars=$(echo $1 | sed 's|;$||' | awk '{ n=split($0, a, "; "); for (i = 1; i <= n; ++i ) print a[i] }' )
+	other_vars=$(echo "$1" | sed 's|;$||' | awk '{ n=split($0, a, "; "); for (i = 1; i <= n; ++i ) print a[i] }' )
 	while read var; do
 		if [[ "$var" =~ ([0-9a-zA-Z_-]+)=(.*) ]]; then
-			printf "  %s : %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
-			#set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
+			#printf "  %s : %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+			set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
 		else
 			printf "  %s is not a valid property definition!\n" 		"$var"
 			printf "  Check docker environment variables! (%s)\n" "$other_vars"
@@ -90,7 +90,7 @@ config_ttrss() {
 		EXT_URI="${BASH_REMATCH[6]}"
 		printf "\nSELF_URL %s is valid : \n" "$SELF_URL_PATH"
 		printf "  Protocol : %s " "$EXT_PROTOCOL" 
-		[[ "$EXT_PROTOCOL" = "http" ]] && printf "\n" || printf "(you need an external http server with ssl support) \n"
+		if [[ "$EXT_PROTOCOL" = "http" ]] ; then printf "\n" ; else printf "(you need an external http server with ssl support) \n"; fi
 		printf "  Domain   : %s \n" "$EXT_DOMAIN"
 		printf "  Port     : %s \n" "$EXT_PORT"
 		printf "  Uri      : %s \n" "$EXT_URI"
@@ -113,7 +113,7 @@ config_ttrss() {
 }
 
 write_sql_init() {
-	if [[ ! -f "$SQL_INIT_FILE" && ! -f "$SQL_INIT_FILE.done" ]]; then
+	if [[ ! -f "$SQL_INIT_FILE" ]]; then
 		cat > "$SQL_INIT_FILE" <<-EOF
 		--create user
 		CREATE USER $DB_USER WITH LOGIN PASSWORD '$DB_PASS';
@@ -127,6 +127,13 @@ write_sql_init() {
 		GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
 		
 		EOF
+		if [[ ! -f "$SQL_INIT_FILE" ]] ; then
+			printf "\The file %s has not been written (unknown error)!" "$SQL_INIT_FILE"
+			return 2
+		fi
+	else
+		printf "\nThe init file %s already exists!\n" "$SQL_INIT_FILE"
+		return 1
 	fi
 }
 
@@ -175,18 +182,28 @@ wait_postgres() {
 main() {
 	case $1 in
 		tt-rss )
+			printf "\nInstall & Configure tt-rss...\n"
 			install_ttrss "$TTRSS_TAG" && config_ttrss || exit 1
-			if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
-				write_sql_init || exit 2
-			fi
+			# if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
+			# 	write_sql_init || exit 2
+			# fi
 			if [[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]]; then
+				printf "\nWrite Nginx proxy configuration in %s (%s)...\n" "$NGINX_CFG_FILE" "$EXT_PROTOCOL"
 				write_nginx_proxyconf || exit 3
+			else
+				printf "\nNginx not needed(%s). No proxy configuration will be written." "$EXT_PROTOCOL"
 			fi
+			printf "\nWait for postgres and start...\n"
 			wait_postgres 60 && apache2-foreground
 			;;
 		initsql )
-			if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
+			printf "\nRunning with 'initsql' command : \n"
+			printf "\nThis will create a sql script for database initialization in the volume binded to %s.\n" "$SQL_INIT_DIR"
+			if [[ -d "$SQL_INIT_DIR" ]]; then
 				write_sql_init || exit 2
+			else
+				printf "\nERROR : The directory %s doesn't exist!\n" "$SQL_INIT_DIR"
+				exit 1
 			fi
 			;;
 		*)

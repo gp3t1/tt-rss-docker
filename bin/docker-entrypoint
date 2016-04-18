@@ -11,11 +11,11 @@ DEFAULT_CONF="$TTRSS_DIR/config.php-dist"
 CONF="$TTRSS_DIR/config.php"
 
 # Nginx Config
-NGINX_CFG_DIR="/external/nginx/ext_apps"
+NGINX_CFG_DIR="/external/nginx_conf"
 NGINX_CFG_FILE="${NGINX_CFG_DIR}/${HOST}.conf"
 
 # SQL DB Config
-SQL_INIT_DIR="/external/initDB"
+SQL_INIT_DIR="/external/initdb"
 SQL_INIT_FILE="$SQL_INIT_DIR/tt-rss.sql"
 
 # URLs config

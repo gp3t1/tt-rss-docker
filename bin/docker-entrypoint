@@ -35,8 +35,8 @@ install_ttrss() {
 			mv "/ttrss_${TTRSS_TAG}" "$TTRSS_DIR"
 		else
 			printf "\n[INSTALL] Downloading tt-rss version %s." "$TTRSS_TAG"
-			[[ -z "$TTRSS_TAG" ]] && TTRSS_TAG="master"
-			git clone -b "$TAG" "$TTRSS_REPO" "$TTRSS_DIR"
+			#[[ -z "$TTRSS_TAG" ]] && TTRSS_TAG="master"
+			git clone -b "$TTRSS_TAG" "$TTRSS_REPO" "$TTRSS_DIR" && rm -rf "/ttrss_*"
 		fi
 		if [[ -f "$DEFAULT_CONF" ]] ; then
 			chown -R www-data:www-data "$TTRSS_DIR"

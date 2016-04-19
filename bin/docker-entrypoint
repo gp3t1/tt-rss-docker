@@ -51,7 +51,7 @@ set_var() {
 	[[ ! -f "$CONF" ]] && echo "[CONFIG]  tt-rss config file not found ($CONF)." && return 1
 	[[ $# -ne 2 ]] && echo "usage: $0 <\"variable_name\"> <\"value\">" && return 2
 	echo "[CONFIG]  define $1=$2"
-	sed -ri.bak "s|^(\s*define\('$1',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$2\3);|;" "$CONF"
+	sed -ri.bak "s|^(\s*define\('$1',\s*)(['\"]{1}).*(['\"]{1}\);)(.*)$|\1\2$2\3\4|;" "$CONF"
 }
 
 set_other_vars() {
@@ -93,14 +93,14 @@ config_ttrss() {
 	fi
 #				 "s|^(\s*define\('$1',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$2\3);|;"
 	echo "[CONFIG]  TT-RSS configuration will be defined in $CONF (from $DEFAULT_CONF)"
-	sed -r "s|^(\s*define\('DB_TYPE',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_TYPE\3|;
-					s|^(\s*define\('DB_NAME',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_NAME\3|;
-					s|^(\s*define\('DB_HOST',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_HOST\3|;
-					s|^(\s*define\('DB_PORT',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_PORT\3|;
-					s|^(\s*define\('DB_USER',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_USER\3|;
-					s|^(\s*define\('DB_PASS',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_PASS\3|;
-					s|^(\s*define\('PHP_EXECUTABLE',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$(which php)\3|;
-					s|^(\s*define\('SELF_URL_PATH',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$SELF_URL_PATH\3|;" "$DEFAULT_CONF" > "$CONF"
+	sed -r "s|^(\s*define\('DB_TYPE',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_TYPE\3|;
+					s|^(\s*define\('DB_NAME',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_NAME\3|;
+					s|^(\s*define\('DB_HOST',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_HOST\3|;
+					s|^(\s*define\('DB_PORT',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_PORT\3|;
+					s|^(\s*define\('DB_USER',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_USER\3|;
+					s|^(\s*define\('DB_PASS',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$DB_PASS\3|;
+					s|^(\s*define\('PHP_EXECUTABLE',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$(which php)\3|;
+					s|^(\s*define\('SELF_URL_PATH',\s*)(['\"]{1}).*(['\"]{1}\);).*$|\1\2$SELF_URL_PATH\3|;" "$DEFAULT_CONF" > "$CONF"
 	set_other_vars "$TTRSS_OPTS" || return 1
 	[[ -f "$CONF" ]]
 }

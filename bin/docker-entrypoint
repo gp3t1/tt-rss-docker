@@ -6,7 +6,6 @@ APP_NAME="tt-rss"
 
 # TT-RSS Config
 TTRSS_DIR="$APP_NAME"
-DEFAULT_INSTALL_DIR="/ttrss_install"
 DEFAULT_CONF="$TTRSS_DIR/config.php-dist"
 CONF="$TTRSS_DIR/config.php"
 
@@ -51,14 +50,14 @@ set_var() {
 	[[ ! -f "$CONF" ]] && echo "[CONFIG]  tt-rss config file not found ($CONF)." && return 1
 	[[ $# -ne 2 ]] && echo "usage: $0 <\"variable_name\"> <\"value\">" && return 2
 	echo "[CONFIG]  define $1=$2"
-	sed -ri.bak "s|^(\s*define\('$1',).*$|\1 \"$2\");|;" "$CONF"
+	sed -ri.bak "s|^(\s*define\('$1',\s*)('|\").*('|\")(\);)$|\1\2$2\3\4);|;" "$CONF"
 }
 
 set_other_vars() {
 	# $1 must be in the form : var_name=value ezvsnv; [var_name=value ezvsnv; ]...
 	# no space around '=' and one space after ';'
 	[[ $# -ne 1 ]] && return 1
-	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
+	[[ -z $1 ]] && echo "[CONFIG] no custom variables provided for tt-rss." && return 0
 	
 	other_vars=$(echo "$1" | sed 's|;$||' | awk '{ n=split($0, a, "; "); for (i = 1; i <= n; ++i ) print a[i] }' )
 	while read var; do

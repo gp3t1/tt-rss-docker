@@ -35,7 +35,8 @@ install_ttrss() {
 		else
 			printf "\n[INSTALL] Downloading tt-rss version %s." "$TTRSS_TAG"
 			#[[ -z "$TTRSS_TAG" ]] && TTRSS_TAG="master"
-			git clone -b "$TTRSS_TAG" "$TTRSS_REPO" "$TTRSS_DIR" && rm -rf "/ttrss_*"
+			rm -rf "/ttrss_*"
+			git clone -b "$TTRSS_TAG" "$TTRSS_REPO" "$TTRSS_DIR"
 		fi
 		if [[ -f "$DEFAULT_CONF" ]] ; then
 			chown -R www-data:www-data "$TTRSS_DIR"
@@ -50,7 +51,7 @@ set_var() {
 	[[ ! -f "$CONF" ]] && echo "[CONFIG]  tt-rss config file not found ($CONF)." && return 1
 	[[ $# -ne 2 ]] && echo "usage: $0 <\"variable_name\"> <\"value\">" && return 2
 	echo "[CONFIG]  define $1=$2"
-	sed -ri.bak "s|^(\s*define\('$1',\s*)('|\").*('|\")(\);)$|\1\2$2\3\4);|;" "$CONF"
+	sed -ri.bak "s|^(\s*define\('$1',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$2\3);|;" "$CONF"
 }
 
 set_other_vars() {
@@ -90,16 +91,16 @@ config_ttrss() {
 		echo "Provided SELF_URL_PATH is not valid.( http[s]://my.domain.xyz[:custom_port][/custom_uri] )"
 		exit 1
 	fi
-
+#				 "s|^(\s*define\('$1',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$2\3);|;"
 	echo "[CONFIG]  TT-RSS configuration will be defined in $CONF (from $DEFAULT_CONF)"
-	sed -r "s|^(\s*define\('DB_TYPE',).*$|\1 \"$DB_TYPE\");|;
-					s|^(\s*define\('DB_NAME',).*$|\1 \"$DB_NAME\");|;
-					s|^(\s*define\('DB_HOST',).*$|\1 \"$DB_HOST\");|;
-					s|^(\s*define\('DB_PORT',).*$|\1 \"$DB_PORT\");|;
-					s|^(\s*define\('DB_USER',).*$|\1 \"$DB_USER\");|;
-					s|^(\s*define\('DB_PASS',).*$|\1 \"$DB_PASS\");|;
-					s|^(\s*define\('PHP_EXECUTABLE',).*$|\1 \"$(which php)\");|;
-					s|^(\s*define\('SELF_URL_PATH',).*$|\1 \"$SELF_URL_PATH\");|;" "$DEFAULT_CONF" > "$CONF"
+	sed -r "s|^(\s*define\('DB_TYPE',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_TYPE\3|;
+					s|^(\s*define\('DB_NAME',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_NAME\3|;
+					s|^(\s*define\('DB_HOST',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_HOST\3|;
+					s|^(\s*define\('DB_PORT',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_PORT\3|;
+					s|^(\s*define\('DB_USER',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_USER\3|;
+					s|^(\s*define\('DB_PASS',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$DB_PASS\3|;
+					s|^(\s*define\('PHP_EXECUTABLE',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$(which php)\3|;
+					s|^(\s*define\('SELF_URL_PATH',\s*)(['\"]{1}).*(['\"]{1}\);)$|\1\2$SELF_URL_PATH\3|;" "$DEFAULT_CONF" > "$CONF"
 	set_other_vars "$TTRSS_OPTS" || return 1
 	[[ -f "$CONF" ]]
 }

@@ -2,8 +2,8 @@ FROM php:7.0.4-apache
 
 MAINTAINER Jeremy PETIT "jeremy.petit@gmail.com"
 
-# docker run --rm -e SELF_URL_PATH=http://localhost/rss -e DB_TYPE=pgsql -e DB_NAME=toto -e DB_HOST=dbhost -e DB_PORT=5432 -e DB_USER=tt-rss -e DB_PASS=tt-rss 
 ENV DEBIAN_FRONTEND noninteractive
+ENV TTRSS_REPO "https://tt-rss.org/git/tt-rss.git"
 ENV TTRSS_TAG 16.3
 ENV SELF_URL_PATH 'http://example.org/tt-rss/'
 # supports pgsql or mysql
@@ -18,13 +18,13 @@ ENV DB_PORT changeme
 ENV DB_USER tt-rss
 # database tt-rss password
 ENV DB_PASS changeme
-# 
+# TTRSS_OPTS can provide additional properties to tt-rss (config.php)
+# It must be in the form : "<prop_name>=<prop_value>[; <prop2_name>=<prop2_value>]..."
+#    no space around '=' and one '; ' between each property definition (';'+' ')
 ENV TTRSS_OPTS ""
-# TTRSS_OPTS must be in the form : "var_name=value ezvsnv; [var_name=value ezvsnv; ]..."
-# no space around '=' and one '; ' between each property definition (';'+' ')
 
-VOLUME ["/var/log", "/backups", "/var/www/html", "/external/nginx_conf", "/external/initdb"]
-#WORKDIR /var/www/html
+VOLUME ["/backups", "/var/www/html", "/external/nginx_conf", "/external/initdb"]
+# and maybe "/var/log/ttrss"
 
 # install php non-default modules : mbstring (in libapache2-mod-php5), php5-gd and php5-pgsql
 RUN apt-get update && apt-get install -y --no-install-recommends 	git \
@@ -44,10 +44,14 @@ RUN docker-php-ext-install -j$(nproc) mbstring \
 	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
 	&& docker-php-ext-install -j$(nproc) gd
 
+# INSTALL default version of tt-rss
+RUN git clone -b "${TTRSS_TAG}" "${TTRSS_REPO}" "/ttrss_${TTRSS_TAG}"
+
 #Deploy scripts
 COPY bin/* /usr/local/bin/
 RUN chmod +x /usr/local/bin/*
 
+# WORKDIR /var/www/html
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["tt-rss"]
-# COPY config/php.ini /usr/local/etc/php/
+

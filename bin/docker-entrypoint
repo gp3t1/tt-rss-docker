@@ -5,8 +5,8 @@ HOST=$(hostname)
 APP_NAME="tt-rss"
 
 # TT-RSS Config
-TTRSS_REPO="https://tt-rss.org/git/tt-rss.git"
 TTRSS_DIR="$APP_NAME"
+DEFAULT_INSTALL_DIR="/ttrss_install"
 DEFAULT_CONF="$TTRSS_DIR/config.php-dist"
 CONF="$TTRSS_DIR/config.php"
 
@@ -25,14 +25,26 @@ LOCAL_PORT="80"
 LOCAL_URI="$APP_NAME"
 
 install_ttrss() {
-	#usage : install_ttrss <branch_name|tag_name[default:master]>
-	[[ $# -lt 1 ]] && TAG="master" || TAG="$1"
-	echo "[INSTALL] TT-RSS.$TAG will be installed in $(pwd)/$TTRSS_DIR"
-	if [[ ! -d "$TTRSS_DIR" ]]; then
-		git clone -b "$TAG" "$TTRSS_REPO" "$TTRSS_DIR" \
-		&& chown -R www-data:www-data "$TTRSS_DIR"
-	fi
-	[[ -f "$DEFAULT_CONF" ]]
+	if [[ -d "$TTRSS_DIR" ]]; then
+		printf "\n[INSTALL] tt-rss already installed." "$TTRSS_TAG"
+		# TODO : think about updating ?
+		return 0
+	else
+		if [[ -d "/ttrss_${TTRSS_TAG}" ]]; then
+			printf "\n[INSTALL] Using default tt-rss version (%s)." "$TTRSS_TAG"
+			mv "/ttrss_${TTRSS_TAG}" "$TTRSS_DIR"
+		else
+			printf "\n[INSTALL] Downloading tt-rss version %s." "$TTRSS_TAG"
+			[[ -z "$TTRSS_TAG" ]] && TTRSS_TAG="master"
+			git clone -b "$TAG" "$TTRSS_REPO" "$TTRSS_DIR"
+		fi
+		if [[ -f "$DEFAULT_CONF" ]] ; then
+			chown -R www-data:www-data "$TTRSS_DIR"
+			printf "\n[INSTALL] TT-RSS.$TAG is installed in %s" "$(pwd)/$TTRSS_DIR"
+			return 0
+		fi
+		return 1
+	fi	
 }
 
 set_var() {
@@ -60,25 +72,6 @@ set_other_vars() {
 		fi
 	done <<<"$other_vars"
 }
-
-# set_other_vars() {
-# 	# $1 must be in the form : var_name="value ezvsnv"; [var_name="value ezvsnv";] ...
-# 	[[ $# -ne 1 ]] && return 1
-# 	[[ -z $1 ]] && echo "[CONFIG]  no custom variables provided for tt-rss." && return 0
-	
-# 	local other_vars=$(echo "$1" | sed "s|\";\s*|\"\n|g")
-# 	echo "[CONFIG]  list of custom properties provided for tt-rss : "
-# 	echo "$other_vars"
-	
-# 	OIFS="$IFS"
-# 	IFS=$'\n'
-# 	for v in $other_vars; do
-# 		if [[ "$v" =~ ^([0-9a-zA-Z_]+)=\"(.*)\"$ ]]; then
-# 			set_var "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || return 1
-# 		fi
-# 	done
-# 	IFS="$OIFS"
-# }
 
 config_ttrss() {
 	[[ -f "$CONF" ]] && echo "[CONFIG]  tt-rss is already configured." && return 0
@@ -183,10 +176,7 @@ main() {
 	case $1 in
 		tt-rss )
 			printf "\nInstall & Configure tt-rss...\n"
-			install_ttrss "$TTRSS_TAG" && config_ttrss || exit 1
-			# if [[ -d "$SQL_INIT_DIR"  && ! -e "$SQL_INIT_FILE"     ]]; then
-			# 	write_sql_init || exit 2
-			# fi
+			install_ttrss && config_ttrss || exit 1
 			if [[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]]; then
 				printf "\nWrite Nginx proxy configuration in %s (%s)...\n" "$NGINX_CFG_FILE" "$EXT_PROTOCOL"
 				write_nginx_proxyconf || exit 3

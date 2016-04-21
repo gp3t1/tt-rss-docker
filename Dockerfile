@@ -54,7 +54,8 @@ RUN git clone -b "${TTRSS_TAG}" "${TTRSS_REPO}" "/ttrss_${TTRSS_TAG}"
 
 ##  Deploy scripts
 COPY bin/* /usr/local/bin/
-RUN chmod +x /usr/local/bin/*
+COPY init_schema.php /init_schema.php
+RUN chmod +x /usr/local/bin/* /init_schema.php
 
 # WORKDIR /var/www/html
 ENTRYPOINT ["docker-entrypoint"]

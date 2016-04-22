@@ -107,6 +107,7 @@ function dbcheck($config)
 		return true;
 	}
 	catch (PDOException $e) {
+		echo 'dbcheck exception : ',  $e->getMessage(), "\n";
 		return false;
 	}
 }

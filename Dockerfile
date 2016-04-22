@@ -1,4 +1,4 @@
-FROM php:7.0.4-apache
+FROM php:7-apache
 
 MAINTAINER Jeremy PETIT "jeremy.petit@gmail.com"
 

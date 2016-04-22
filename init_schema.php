@@ -43,6 +43,12 @@ if (getenv('DB_PASS') !== false) {
 	error('DB_PASS not found!');
 }
 
+echo 'This script will try to create tt-rss schema (if needed)' . PHP_EOL;
+echo '  - ' . $config['DB_TYPE'] . ' on ' . $config['DB_HOST'] . ':' . $config['DB_PORT'] . PHP_EOL;
+echo '  - Database : ' . $config['DB_NAME'] . PHP_EOL;
+echo '  - User :' . $config['DB_USER'] . PHP_EOL;
+echo '  - Pass :' . $config['DB_PASS'] . PHP_EOL;
+
 if (dbcheck($config)) {
 	echo 'Database login created and confirmed' . PHP_EOL;
 	$pdo = dbconnect($config);

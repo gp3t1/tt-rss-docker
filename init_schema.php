@@ -88,13 +88,8 @@ function error($text)
 
 function dbconnect($config)
 {
-	$map = array('host' => 'HOST', 'port' => 'PORT', 'dbname' => 'NAME');
-	$dsn = $config['DB_TYPE'] . ':';
-	foreach ($map as $d => $h) {
-		if (isset($config['DB_' . $h])) {
-			$dsn .= $d . '=' . $config['DB_' . $h] . ';';
-		}
-	}
+	$dsn=$config['DB_TYPE'] . ':host=' . $config['DB_HOST'] . ';port=' . $config['DB_PORT'] . ';dbname=' . $config['DB_NAME'];
+	echo 'url : ' . $dsn . PHP_EOL;
 	$pdo = new \PDO($dsn, $config['DB_USER'], $config['DB_PASS']);
 	$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	return $pdo;

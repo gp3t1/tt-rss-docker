@@ -6,6 +6,7 @@ APP_NAME="tt-rss"
 
 # TT-RSS Config
 TTRSS_DIRNAME="$APP_NAME"
+TTRSS_FULLPATH="$(pwd)/$TTRSS_DIRNAME"
 DEFAULT_CONF="$TTRSS_DIRNAME/config.php-dist"
 CONF="$TTRSS_DIRNAME/config.php"
 
@@ -130,11 +131,27 @@ write_sql_init() {
 }
 
 init_schema() {
-	if ! php /init_schema.php -ttrss_path "$(pwd)/$TTRSS_DIRNAME" ; then
+	if ! php /init_schema.php "$TTRSS_FULLPATH" ; then
 		printf "\nError during schema initialization!\n"
 		return 1
 	fi
 	printf "\nDatabase initialized with tt-rss schema.\n"
+}
+
+install_themes() {
+	if [[ ! -d "${TTRSS_FULLPATH}/themes/clean-greader" ]]; then
+		git clone "https://github.com/naeramarth7/clean-greader" 		"${TTRSS_FULLPATH}/themes/clean-greader"
+		ln -s "${TTRSS_FULLPATH}/themes/clean-greader/clean-greader.css" 	"./clean-greader.css"
+	fi
+	if [[ ! -d "${TTRSS_FULLPATH}/themes/feedly" ]]; then
+		git clone "https://github.com/levito/tt-rss-feedly-theme" 	"${TTRSS_FULLPATH}/themes/feedly"
+		ln -s "${TTRSS_FULLPATH}/themes/feedly/feedly.css" 								"./feedly.css"
+	fi
+	if [[ ! -d "${TTRSS_FULLPATH}/themes/reeder" ]]; then
+			git clone "https://github.com/tschinz/tt-rss_reeder_theme" 	"${TTRSS_FULLPATH}/themes/reeder"
+			ln -s "${TTRSS_FULLPATH}/themes/reeder/reeder.css" 								"./reeder.css"
+	fi
+	printf "\nInstalled themes : %s\n" $(ls "${TTRSS_FULLPATH}/themes/*.css")
 }
 
 write_nginx_proxyconf() {
@@ -184,8 +201,8 @@ wait_postgres() {
 main() {
 	case $1 in
 		tt-rss )
-			printf "\nInstall & Configure tt-rss...\n"
-			install_ttrss && config_ttrss || exit 1
+			printf "\nInstall & Configure tt-rss + themes + plugins ...\n"
+			install_ttrss && config_ttrss && install_themes || exit 1
 			if [[ -d "$NGINX_CFG_DIR" && "$EXT_PROTOCOL" = "https" ]]; then
 				printf "\nWrite Nginx proxy configuration in %s (%s)...\n" "$NGINX_CFG_FILE" "$EXT_PROTOCOL"
 				write_nginx_proxyconf || exit 3
@@ -205,11 +222,14 @@ main() {
 				exit 1
 			fi
 			;;
-		*)
+		help)
 			printf "\nUse one of the following commands : \n \
 			 				\"initsql\" -> write sql scripts for postgres initialization and stop \n \
 			 				\"tt-rss\"  -> run tt-rss"
 			exit 0
+			;;
+		* )
+			exec "$@"
 			;;
 	esac
 }

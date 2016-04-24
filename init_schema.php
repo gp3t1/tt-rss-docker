@@ -1,9 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-$opts  = array(
-	"ttrss_path:",
-);
+$ttrss_path = $argv[1];
 
 $config = array();
 
@@ -45,9 +43,12 @@ if (getenv('DB_PASS') !== false) {
 
 echo 'This script will try to create tt-rss schema (if needed)' . PHP_EOL;
 echo '  - ' . $config['DB_TYPE'] . ' on ' . $config['DB_HOST'] . ':' . $config['DB_PORT'] . PHP_EOL;
-echo '  - Database : ' . $config['DB_NAME'] . PHP_EOL;
-echo '  - User :' . $config['DB_USER'] . PHP_EOL;
-echo '  - Pass :' . $config['DB_PASS'] . PHP_EOL;
+echo '  - Database    : ' . $config['DB_NAME'] . PHP_EOL;
+echo '  - User        : ' . $config['DB_USER'] . PHP_EOL;
+//echo '  - Pass        : ' . $config['DB_PASS'] . PHP_EOL;
+echo '  - ttrss path  : ' . $ttrss_path . PHP_EOL;
+$schema_path = $ttrss_path . '/schema/ttrss_schema_' . $config['DB_TYPE'] . '.sql';
+echo '  - schema path : ' . $schema_path . PHP_EOL;
 
 if (dbcheck($config)) {
 	echo 'Database login created and confirmed' . PHP_EOL;
@@ -58,7 +59,8 @@ if (dbcheck($config)) {
 	}
 	catch (PDOException $e) {
 		echo 'Database table not found, applying schema... ' . PHP_EOL;
-		$schema = file_get_contents($opts['ttrss_path'] . '/schema/ttrss_schema_' . $config['DB_TYPE'] . '.sql');
+		$schema = file_get_contents($schema_path);
+		//pg_query($conn, "BEGIN; COMMIT;\n" . file_get_contents($filename));
 		$schema = preg_replace('/--(.*?);/', '', $schema);
 		$schema = preg_replace('/[\r\n]/', ' ', $schema);
 		$schema = trim($schema, ' ;');

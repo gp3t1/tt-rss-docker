@@ -151,6 +151,8 @@ install_themes() {
 			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${TTRSS_FULLPATH}/themes/reeder"
 			ln -s "${TTRSS_FULLPATH}/themes/reeder/reeder.css" "${TTRSS_FULLPATH}/themes/reeder.css"
 	fi
+	chown -R www-data:www-data "${TTRSS_FULLPATH}/themes"
+	chmod -R 644 "${TTRSS_FULLPATH}/themes"
 	printf "\nInstalled themes : %s\n" "$(ls "${TTRSS_FULLPATH}/themes/*.css")"
 }
 

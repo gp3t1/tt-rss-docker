@@ -9,6 +9,7 @@ TTRSS_DIRNAME="$APP_NAME"
 TTRSS_FULLPATH="$(pwd)/$TTRSS_DIRNAME"
 DEFAULT_CONF="$TTRSS_DIRNAME/config.php-dist"
 CONF="$TTRSS_DIRNAME/config.php"
+THEMES_DIR="/var/lib/tt-rss/themes"
 
 # Nginx Config
 NGINX_CFG_DIR="/external/nginx_conf"
@@ -139,21 +140,31 @@ init_schema() {
 }
 
 install_themes() {
-	if [[ ! -d "${TTRSS_FULLPATH}/themes/clean-greader" ]]; then
-		git clone "https://github.com/naeramarth7/clean-greader" "${TTRSS_FULLPATH}/themes/clean-greader"
-		ln -s "${TTRSS_FULLPATH}/themes/clean-greader/clean-greader.css" "${TTRSS_FULLPATH}/themes/clean-greader.css"
+	if [[ ! -d "${THEMES_DIR}/clean-greader" ]]; then
+		git clone "https://github.com/naeramarth7/clean-greader" "${THEMES_DIR}/clean-greader"
+	else
+		(cd "${THEMES_DIR}/clean-greader" && git fetch)
 	fi
-	if [[ ! -d "${TTRSS_FULLPATH}/themes/feedly" ]]; then
-		git clone "https://github.com/levito/tt-rss-feedly-theme" "${TTRSS_FULLPATH}/themes/feedly"
-		ln -s "${TTRSS_FULLPATH}/themes/feedly/feedly.css" "${TTRSS_FULLPATH}/themes/feedly.css"
+	cp -Ru "${THEMES_DIR}/clean-greader/*" "${TTRSS_FULLPATH}/themes/"
+	
+	if [[ ! -d "${THEMES_DIR}/feedly" ]]; then
+		git clone "https://github.com/levito/tt-rss-feedly-theme" "${THEMES_DIR}/feedly"
+	else
+		(cd "${THEMES_DIR}/feedly" && git fetch)
 	fi
-	if [[ ! -d "${TTRSS_FULLPATH}/themes/reeder" ]]; then
-			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${TTRSS_FULLPATH}/themes/reeder"
-			ln -s "${TTRSS_FULLPATH}/themes/reeder/reeder.css" "${TTRSS_FULLPATH}/themes/reeder.css"
+	cp -Ru "${THEMES_DIR}/feedly/*" "${TTRSS_FULLPATH}/themes/"
+	
+	if [[ ! -d "${THEMES_DIR}/reeder" ]]; then
+			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${THEMES_DIR}/reeder"
+		else
+			(cd "${THEMES_DIR}/reeder" && git fetch)
 	fi
+	cp -Ru "${THEMES_DIR}/reeder/*" "${TTRSS_FULLPATH}/themes/"
+
 	chown -R www-data:www-data "${TTRSS_FULLPATH}/themes"
 	chmod -R 644 "${TTRSS_FULLPATH}/themes"
-	printf "\nInstalled themes : %s\n" "$(ls "${TTRSS_FULLPATH}/themes/*.css")"
+	printf "\nInstalled themes : \n" 
+	ls -l "${TTRSS_FULLPATH}/themes/*.css"
 }
 
 write_nginx_proxyconf() {

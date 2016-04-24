@@ -140,18 +140,18 @@ init_schema() {
 
 install_themes() {
 	if [[ ! -d "${TTRSS_FULLPATH}/themes/clean-greader" ]]; then
-		git clone "https://github.com/naeramarth7/clean-greader" 		"${TTRSS_FULLPATH}/themes/clean-greader"
-		ln -s "${TTRSS_FULLPATH}/themes/clean-greader/clean-greader.css" 	"./clean-greader.css"
+		git clone "https://github.com/naeramarth7/clean-greader" "${TTRSS_FULLPATH}/themes/clean-greader"
+		ln -s "${TTRSS_FULLPATH}/themes/clean-greader/clean-greader.css" "${TTRSS_FULLPATH}/themes/clean-greader.css"
 	fi
 	if [[ ! -d "${TTRSS_FULLPATH}/themes/feedly" ]]; then
-		git clone "https://github.com/levito/tt-rss-feedly-theme" 	"${TTRSS_FULLPATH}/themes/feedly"
-		ln -s "${TTRSS_FULLPATH}/themes/feedly/feedly.css" 								"./feedly.css"
+		git clone "https://github.com/levito/tt-rss-feedly-theme" "${TTRSS_FULLPATH}/themes/feedly"
+		ln -s "${TTRSS_FULLPATH}/themes/feedly/feedly.css" "${TTRSS_FULLPATH}/themes/feedly.css"
 	fi
 	if [[ ! -d "${TTRSS_FULLPATH}/themes/reeder" ]]; then
-			git clone "https://github.com/tschinz/tt-rss_reeder_theme" 	"${TTRSS_FULLPATH}/themes/reeder"
-			ln -s "${TTRSS_FULLPATH}/themes/reeder/reeder.css" 								"./reeder.css"
+			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${TTRSS_FULLPATH}/themes/reeder"
+			ln -s "${TTRSS_FULLPATH}/themes/reeder/reeder.css" "${TTRSS_FULLPATH}/themes/reeder.css"
 	fi
-	printf "\nInstalled themes : %s\n" $(ls "${TTRSS_FULLPATH}/themes/*.css")
+	printf "\nInstalled themes : %s\n" "$(ls "${TTRSS_FULLPATH}/themes/*.css")"
 }
 
 write_nginx_proxyconf() {

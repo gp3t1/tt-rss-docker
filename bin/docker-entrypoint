@@ -161,8 +161,8 @@ install_themes() {
 	fi
 	cp -Ru "${THEMES_DIR}/reeder/*" "${TTRSS_FULLPATH}/themes/"
 
-	chown -R www-data:www-data "${TTRSS_FULLPATH}/themes"
-	chmod -R 644 "${TTRSS_FULLPATH}/themes"
+	chown -R root:www-data "${TTRSS_FULLPATH}/themes"
+	chmod -R 755 "${TTRSS_FULLPATH}/themes"
 	printf "\nInstalled themes : \n" 
 	ls -l "${TTRSS_FULLPATH}/themes/*.css"
 }

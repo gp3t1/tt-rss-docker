@@ -145,26 +145,26 @@ install_themes() {
 	else
 		(cd "${THEMES_DIR}/clean-greader" && git fetch)
 	fi
-	cp -Ru "${THEMES_DIR}/clean-greader/*" "${TTRSS_FULLPATH}/themes/"
+	cp -Ru ${THEMES_DIR}/clean-greader/* "${TTRSS_FULLPATH}/themes/"
 	
 	if [[ ! -d "${THEMES_DIR}/feedly" ]]; then
 		git clone "https://github.com/levito/tt-rss-feedly-theme" "${THEMES_DIR}/feedly"
 	else
 		(cd "${THEMES_DIR}/feedly" && git fetch)
 	fi
-	cp -Ru "${THEMES_DIR}/feedly/*" "${TTRSS_FULLPATH}/themes/"
+	cp -Ru ${THEMES_DIR}/feedly/* "${TTRSS_FULLPATH}/themes/"
 	
 	if [[ ! -d "${THEMES_DIR}/reeder" ]]; then
 			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${THEMES_DIR}/reeder"
 		else
 			(cd "${THEMES_DIR}/reeder" && git fetch)
 	fi
-	cp -Ru "${THEMES_DIR}/reeder/*" "${TTRSS_FULLPATH}/themes/"
+	cp -Ru ${THEMES_DIR}/reeder/* "${TTRSS_FULLPATH}/themes/"
 
 	chown -R root:www-data "${TTRSS_FULLPATH}/themes"
 	chmod -R 755 "${TTRSS_FULLPATH}/themes"
 	printf "\nInstalled themes : \n" 
-	ls -l "${TTRSS_FULLPATH}/themes/*.css"
+	ls ${TTRSS_FULLPATH}/themes/*.css
 }
 
 write_nginx_proxyconf() {

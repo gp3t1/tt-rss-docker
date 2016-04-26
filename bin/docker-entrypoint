@@ -140,31 +140,32 @@ init_schema() {
 }
 
 install_themes() {
+	#  Install clean-greader theme
 	if [[ ! -d "${THEMES_DIR}/clean-greader" ]]; then
 		git clone "https://github.com/naeramarth7/clean-greader" "${THEMES_DIR}/clean-greader"
 	else
 		(cd "${THEMES_DIR}/clean-greader" && git fetch)
 	fi
-	cp -Ru ${THEMES_DIR}/clean-greader/* "${TTRSS_FULLPATH}/themes/"
-	
+	cp -Ru "${THEMES_DIR}/clean-greader" "${TTRSS_FULLPATH}/themes/clean-greader"
+	ln -s "${TTRSS_FULLPATH}/themes/clean-greader/clean-greader.css" "${TTRSS_FULLPATH}/themes/clean-greader.css"
+	#  Install feedly theme
 	if [[ ! -d "${THEMES_DIR}/feedly" ]]; then
 		git clone "https://github.com/levito/tt-rss-feedly-theme" "${THEMES_DIR}/feedly"
 	else
 		(cd "${THEMES_DIR}/feedly" && git fetch)
 	fi
-	cp -Ru ${THEMES_DIR}/feedly/* "${TTRSS_FULLPATH}/themes/"
-	
+	cp -Ru 	"${THEMES_DIR}/feedly/feedly"			"${TTRSS_FULLPATH}/themes/feedly"
+	cp -u 	"${THEMES_DIR}/feedly/feedly.css" "${TTRSS_FULLPATH}/themes/"
+	#  Install reeder theme
 	if [[ ! -d "${THEMES_DIR}/reeder" ]]; then
 			git clone "https://github.com/tschinz/tt-rss_reeder_theme" "${THEMES_DIR}/reeder"
 		else
 			(cd "${THEMES_DIR}/reeder" && git fetch)
 	fi
-	cp -Ru ${THEMES_DIR}/reeder/* "${TTRSS_FULLPATH}/themes/"
+	cp -Ru 	"${THEMES_DIR}/reeder/reeder" 		"${TTRSS_FULLPATH}/themes/reeder"
+	cp -u 	"${THEMES_DIR}/reeder/reeder.css" "${TTRSS_FULLPATH}/themes/"
 
-	chown -R root:www-data "${TTRSS_FULLPATH}/themes"
-	chmod -R 755 "${TTRSS_FULLPATH}/themes"
-	printf "\nInstalled themes : \n" 
-	ls ${TTRSS_FULLPATH}/themes/*.css
+	printf "\nInstalled themes : %s \n" "$(ls ${TTRSS_FULLPATH}/themes/*.css)"
 }
 
 write_nginx_proxyconf() {
@@ -211,6 +212,25 @@ wait_postgres() {
 	return 0
 }
 
+set_permissions() {
+	chown -R www-data:www-data "${TTRSS_FULLPATH}"
+	find "${TTRSS_FULLPATH}" -type d -exec chmod 0750 {} \;
+	find "${TTRSS_FULLPATH}" -type f -exec chmod 0640 {} \;
+	find "${TTRSS_FULLPATH}" -type l -exec chmod 0640 {} \;
+	chmod -R 777 	"${TTRSS_FULLPATH}/cache/images/" \
+								"${TTRSS_FULLPATH}/cache/js/" 		\
+								"${TTRSS_FULLPATH}/cache/export/" \
+								"${TTRSS_FULLPATH}/cache/upload/" \
+								"${TTRSS_FULLPATH}/feed-icons/" 	\
+								"${TTRSS_FULLPATH}/lock/"
+}
+
+start_ttrss() {
+	set_permissions
+	printf "\nWait for postgres and start...\n"
+	wait_postgres 60 && apache2-foreground
+}
+
 main() {
 	case $1 in
 		tt-rss )
@@ -222,8 +242,7 @@ main() {
 			else
 				printf "\nNginx not needed(%s). No proxy configuration will be written." "$EXT_PROTOCOL"
 			fi
-			printf "\nWait for postgres and start...\n"
-			wait_postgres 60 && apache2-foreground
+			start_ttrss
 			;;
 		initsql )
 			printf "\nRunning with 'initsql' command : \n"
